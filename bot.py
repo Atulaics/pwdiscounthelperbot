@@ -6,13 +6,55 @@ from telegram.ext import (
     CallbackQueryHandler,
 )
 
-TOKEN = "7961954465:AAGiBRXZp4OZDGf3uSD5RCfeJD0Al3ljpjQ"
+# ===== SETTINGS =====
+TOKEN = "7961954465:AAEEr1mhrm-j_i4wigsicRuF2hYDkRTBKwU"
 ADMIN_ID = 6126776672
 CHANNEL_USERNAME = "@pwdiscounthelper"
 
-users = set()
-coupon_code = "ATULPW10"
+# Default Coupons
+coupons = {
+    "neet": "ATUPAN0001",
+    "jee": "ATUPAN0001",
+    "foundation": "ATUPAN0001",
+    "gate": "ATUPAN0001"
+}
 
+users = set()
+
+# ===== MAIN MENU =====
+async def main_menu(update, context):
+    keyboard = [
+        [InlineKeyboardButton("🎓 Get Course Coupon", callback_data="select_course")],
+        [InlineKeyboardButton("ℹ️ About Us", callback_data="about")],
+        [InlineKeyboardButton("❌ Exit", callback_data="exit")]
+    ]
+
+    if update.effective_user.id == ADMIN_ID:
+        keyboard.append([InlineKeyboardButton("⚙ Admin Panel", callback_data="admin")])
+
+    reply_markup = InlineKeyboardMarkup(keyboard)
+
+    text = (
+        "🔥 *PW Discount Helper*\n"
+        "_India’s Smartest Savings Bot_\n\n"
+        "🎯 Get Course-Wise Verified Coupons\n"
+        "💰 Maximize Your Savings Today!"
+    )
+
+    if update.callback_query:
+        await update.callback_query.edit_message_text(
+            text,
+            reply_markup=reply_markup,
+            parse_mode="Markdown"
+        )
+    else:
+        await update.message.reply_text(
+            text,
+            reply_markup=reply_markup,
+            parse_mode="Markdown"
+        )
+
+# ===== START =====
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     users.add(user.id)
@@ -24,70 +66,93 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             [InlineKeyboardButton("📢 Join Channel", url=f"https://t.me/{CHANNEL_USERNAME[1:]}")],
             [InlineKeyboardButton("✅ I Joined", callback_data="check_join")]
         ]
-        reply_markup = InlineKeyboardMarkup(keyboard)
-
         await update.message.reply_text(
-            "⚠️ Please join our channel first to get coupon.",
-            reply_markup=reply_markup
+            "⚠️ Please join our channel to access coupons.",
+            reply_markup=InlineKeyboardMarkup(keyboard)
         )
         return
 
-    await send_main_menu(update, context)
+    await main_menu(update, context)
 
-async def send_main_menu(update, context):
-    keyboard = [
-        [InlineKeyboardButton("🎟 Get Coupon", callback_data="coupon")]
-    ]
-    reply_markup = InlineKeyboardMarkup(keyboard)
-
-    await update.message.reply_text(
-        "🔥 Welcome to PW Discount Helper Bot!\nChoose option:",
-        reply_markup=reply_markup
-    )
-
+# ===== BUTTON HANDLER =====
 async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     user = query.from_user
-
     await query.answer()
 
     if query.data == "check_join":
         member = await context.bot.get_chat_member(CHANNEL_USERNAME, user.id)
         if member.status in ["member", "administrator", "creator"]:
-            await query.edit_message_text("✅ Verified Successfully!")
-            await send_main_menu(update, context)
+            await main_menu(update, context)
         else:
-            await query.answer("❌ You still haven't joined!", show_alert=True)
+            await query.answer("❌ Join channel first!", show_alert=True)
 
-    if query.data == "coupon":
+    elif query.data == "select_course":
+        keyboard = [
+            [InlineKeyboardButton("🩺 NEET", callback_data="neet")],
+            [InlineKeyboardButton("🧮 JEE", callback_data="jee")],
+            [InlineKeyboardButton("📘 Foundation", callback_data="foundation")],
+            [InlineKeyboardButton("🎓 GATE", callback_data="gate")],
+            [InlineKeyboardButton("🔙 Back", callback_data="back")]
+        ]
+
         await query.edit_message_text(
-            f"🎉 Use Code: {coupon_code}\nApply on PW website and enjoy discount!"
+            "🎓 Select Your Course:",
+            reply_markup=InlineKeyboardMarkup(keyboard)
         )
 
-async def setcoupon(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    global coupon_code
-    if update.effective_user.id == ADMIN_ID:
-        if context.args:
-            coupon_code = context.args[0]
-            await update.message.reply_text("✅ Coupon Updated!")
-        else:
-            await update.message.reply_text("Usage: /setcoupon NEWCODE")
+    elif query.data in coupons:
+        course = query.data
+        keyboard = [[InlineKeyboardButton("🔙 Back", callback_data="select_course")]]
 
-async def broadcast(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if update.effective_user.id == ADMIN_ID:
-        message = " ".join(context.args)
-        for user_id in users:
-            try:
-                await context.bot.send_message(user_id, message)
-            except:
-                pass
-        await update.message.reply_text("✅ Broadcast Sent!")
+        await query.edit_message_text(
+            f"🎉 *Your Coupon Code*\n\n"
+            f"📚 Course: {course.upper()}\n"
+            f"🎟 Code: `{coupons[course]}`\n\n"
+            f"💰 Apply during checkout & save big!",
+            reply_markup=InlineKeyboardMarkup(keyboard),
+            parse_mode="Markdown"
+        )
 
+    elif query.data == "about":
+        keyboard = [[InlineKeyboardButton("🔙 Back", callback_data="back")]]
+        await query.edit_message_text(
+            "🔥 PW Discount Helper\n\n"
+            "🎯 Course-wise coupons\n"
+            "💰 Verified savings\n"
+            "🚀 Fast & Reliable",
+            reply_markup=InlineKeyboardMarkup(keyboard)
+        )
+
+    elif query.data == "admin" and user.id == ADMIN_ID:
+        keyboard = [
+            [InlineKeyboardButton("👥 User Count", callback_data="user_count")],
+            [InlineKeyboardButton("🔙 Back", callback_data="back")]
+        ]
+        await query.edit_message_text(
+            "⚙ Admin Panel",
+            reply_markup=InlineKeyboardMarkup(keyboard)
+        )
+
+    elif query.data == "user_count" and user.id == ADMIN_ID:
+        keyboard = [[InlineKeyboardButton("🔙 Back", callback_data="admin")]]
+        await query.edit_message_text(
+            f"👥 Total Users: {len(users)}",
+            reply_markup=InlineKeyboardMarkup(keyboard)
+        )
+
+    elif query.data == "back":
+        await main_menu(update, context)
+
+    elif query.data == "exit":
+        await query.edit_message_text(
+            "👋 Session Closed.\nType /start to begin again."
+        )
+
+# ===== RUN =====
 app = ApplicationBuilder().token(TOKEN).build()
 
 app.add_handler(CommandHandler("start", start))
-app.add_handler(CommandHandler("setcoupon", setcoupon))
-app.add_handler(CommandHandler("broadcast", broadcast))
 app.add_handler(CallbackQueryHandler(button_handler))
 
 app.run_polling()
