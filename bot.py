@@ -7,9 +7,12 @@ from telegram.ext import (
 )
 
 # ===== SETTINGS =====
-TOKEN = "YOUR_TOKEN_HERE"
-ADMIN_ID =  123456789
-CHANNEL_USERNAME = "@pwdiscounthelper"
+import os
+
+TOKEN = os.getenv("TOKEN")
+ADMIN_ID = int(os.getenv("ADMIN_ID"))
+CHANNEL_USERNAME = os.getenv("CHANNEL_USERNAME")
+
 
 # Default Coupons
 coupons = {
@@ -156,4 +159,5 @@ app.add_handler(CommandHandler("start", start))
 app.add_handler(CallbackQueryHandler(button_handler))
 
 app.run_polling()
+
 
